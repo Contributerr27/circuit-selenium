@@ -25,4 +25,18 @@ To try Firefox as well, apply with `-var 'browsers=["chromium","firefox"]'`, the
 
 `up.sh` listens on `127.0.0.1:2222`. Set `PORT` to use another port, and pass the same port to Conn3x with `-var port=PORT`. Set `CONTAINERFILE` to test another distro, such as one of the images in Conn3x's `test/images`, which CI uses.
 
+To check a non-default Grid port, keep it separate from the SSH `port` variable:
+
+```sh
+conn3x apply -var grid_port=5555
+conn3x plan -var grid_port=5555
+podman exec -e GRID_PORT=5555 -i circuit-selenium sh -s chromium < check.sh
+```
+
+A port change restarts the hub, so wait for the Grid to report ready before `conn3x plan`:
+an unready Grid makes the plan show the ready step re-running.
+
+`check.sh` still requires loopback binding and refuses extra published ports. CI runs this
+scenario on Ubuntu after checking the default port.
+
 `./down.sh` stops the container, which removes it and its volume, and deletes the key and the state.

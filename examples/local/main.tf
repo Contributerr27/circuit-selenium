@@ -3,6 +3,11 @@ variable "port" {
   default = 2222
 }
 
+variable "grid_port" {
+  type    = number
+  default = 4444
+}
+
 variable "browsers" {
   type    = list(string)
   default = ["chromium"]
@@ -17,6 +22,7 @@ module "selenium" {
   ssh_known_hosts_file = "./known_hosts"
 
   browsers = var.browsers
+  port     = var.grid_port
 }
 
 output "grid_url" {
