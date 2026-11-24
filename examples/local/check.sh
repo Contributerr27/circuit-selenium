@@ -5,11 +5,18 @@
 # event bus isn't on the host at all. CI pipes it in with podman exec.
 # Usage: sh check.sh [chromium|firefox]...  (default chromium)
 set -eu
+GRID_PORT=${GRID_PORT:-4444}
+case "$GRID_PORT" in
+  ''|*[!0-9]*) echo "GRID_PORT must be an integer from 1 to 65535." >&2; exit 1 ;;
+esac
+[ "$GRID_PORT" -ge 1 ] && [ "$GRID_PORT" -le 65535 ] || {
+  echo "GRID_PORT must be an integer from 1 to 65535." >&2; exit 1;
+}
 [ $# -gt 0 ] || set -- chromium
 
 ports=$(podman port selenium-hub)
 echo "selenium-hub publishes: $ports"
-[ "$ports" = "4444/tcp -> 127.0.0.1:4444" ] || { echo "Expected only 4444 on loopback." >&2; exit 1; }
+[ "$ports" = "4444/tcp -> 127.0.0.1:$GRID_PORT" ] || { echo "Expected only Grid port $GRID_PORT on loopback." >&2; exit 1; }
 
 # The hub's image brings curl, and the host network means this goes through
 # the published port as a client on the host would. Some hosts have no curl.
@@ -30,9 +37,9 @@ for browser in "$@"; do
   podman exec -d "$node" sh -c "mkdir -p /tmp/page && echo '<!doctype html><title>$title</title><h1>hello</h1>' > /tmp/page/index.html && cd /tmp/page && exec timeout 180 python3 -m http.server 8099 --bind 127.0.0.1"
   sleep 2
 
-  client "$name" "$title" <<'SCRIPT'
+  client "$name" "$title" "$GRID_PORT" <<'SCRIPT'
 set -eu
-grid=http://127.0.0.1:4444
+grid=http://127.0.0.1:$3
 for _ in $(seq 60); do
   curl -sf "$grid/status" | grep -q '"ready": *true' && break
   sleep 2
